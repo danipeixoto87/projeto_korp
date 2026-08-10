@@ -52,6 +52,26 @@ services:
     networks:
       - korp-network
 
+  grafana:
+    image: grafana/grafana:latest
+
+    container_name: grafana
+
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+
+    depends_on:
+      - prometheus
+
+    networks:
+      - korp-network
+
 networks:
 
   korp-network:
