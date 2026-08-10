@@ -1,0 +1,53 @@
+---
+- name: Provisionar Projeto Korp
+  hosts: local
+  become: true
+
+  tasks:
+
+    - name: Instalar Docker
+      ansible.builtin.dnf:
+        name: docker-ce
+        state: present
+
+    - name: Garantir que o Docker esteja iniciado
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Verificar versão do Docker
+      ansible.builtin.command:
+        cmd: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Exibir versão do Docker
+      ansible.builtin.debug:
+        var: docker_version.stdout
+
+    - name: Criar rede Docker korp-network
+      ansible.builtin.command:
+        cmd: docker network create --driver bridge korp-network
+      register: network_create
+      failed_when:
+        - network_create.rc != 0
+        - "'already exists' not in network_create.stderr"
+      changed_when: network_create.rc == 0
+
+    - name: Subir ambiente com Docker Compose
+      ansible.builtin.command:
+        cmd: docker compose up -d --build
+        chdir: /home/dani/http-server-projeto-korp
+
+    - name: Validar serviço Projeto Korp
+      ansible.builtin.uri:
+        url: http://localhost/projeto-korp
+        method: GET
+        status_code: 200
+        return_content: true
+      register: projeto_korp_response
+
+    - name: Exibir resposta do Projeto Korp
+      ansible.builtin.debug:
+        msg: "{{ projeto_korp_response.content }}"

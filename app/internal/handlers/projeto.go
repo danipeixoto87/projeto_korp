@@ -5,13 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"http-server-projeto-korp/internal/metrics"
 	"http-server-projeto-korp/internal/models"
 )
 
 func ProjetoKorpHandler(w http.ResponseWriter, r *http.Request) {
-
-	metrics.RequestsTotal.Inc()
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
