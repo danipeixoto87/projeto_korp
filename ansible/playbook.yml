@@ -5,7 +5,7 @@
 
   vars:
     project_dir: /opt/http-server-projeto-korp
-    repository: git@github.com:danipeixoto87/projeto_korp.git
+    repository: https://github.com/danipeixoto87/projeto_korp.git
 
   tasks:
 
