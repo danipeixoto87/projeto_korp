@@ -3,11 +3,17 @@
   hosts: local
   become: true
 
+  vars:
+    project_dir: /opt/http-server-projeto-korp
+    repository: git@github.com:danipeixoto87/projeto_korp.git
+
   tasks:
 
-    - name: Instalar Docker
+    - name: Instalar Docker e Git
       ansible.builtin.dnf:
-        name: docker-ce
+        name:
+          - docker-ce
+          - git
         state: present
 
     - name: Garantir que o Docker esteja iniciado
@@ -26,6 +32,13 @@
       ansible.builtin.debug:
         var: docker_version.stdout
 
+    - name: Clonar projeto Korp
+      ansible.builtin.git:
+        repo: "{{ repository }}"
+        dest: "{{ project_dir }}"
+        version: master
+        update: true
+
     - name: Criar rede Docker korp-network
       ansible.builtin.command:
         cmd: docker network create --driver bridge korp-network
@@ -38,7 +51,7 @@
     - name: Subir ambiente com Docker Compose
       ansible.builtin.command:
         cmd: docker compose up -d --build
-        chdir: /home/dani/http-server-projeto-korp
+        chdir: "{{ project_dir }}"
 
     - name: Validar serviço Projeto Korp
       ansible.builtin.uri:
