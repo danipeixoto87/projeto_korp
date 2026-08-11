@@ -1,4 +1,3 @@
----
 - name: Provisionar Projeto Korp
   hosts: local
   become: true
@@ -9,12 +8,107 @@
 
   tasks:
 
-    - name: Instalar Docker e Git
+    - name: Instalar Git
+      ansible.builtin.package:
+        name: git
+        state: present
+
+    - name: Instalar dependências para repositório Docker - RedHat
+      ansible.builtin.dnf:
+        name: dnf-plugins-core
+        state: present
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Configurar repositório Docker - RHEL
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/rhel/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: "0644"
+      when:
+        - ansible_facts['os_family'] == "RedHat"
+        - ansible_facts['distribution'] == "RedHat"
+
+    - name: Configurar repositório Docker - CentOS compatible
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: "0644"
+      when:
+        - ansible_facts['os_family'] == "RedHat"
+        - ansible_facts['distribution'] in ["Rocky", "AlmaLinux", "CentOS"]
+
+    - name: Configurar repositório Docker - Fedora
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/fedora/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+        mode: "0644"
+      when:
+        - ansible_facts['os_family'] == "RedHat"
+        - ansible_facts['distribution'] == "Fedora"
+
+    - name: Instalar dependências para repositório Docker - Debian
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+        update_cache: true
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Criar diretório de keyrings do APT
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Adicionar chave GPG do Docker - Debian
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/{{ 'ubuntu' if ansible_facts['distribution'] == 'Ubuntu' else 'debian' }}/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Obter arquitetura APT
+      ansible.builtin.command:
+        cmd: dpkg --print-architecture
+      register: apt_architecture
+      changed_when: false
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Configurar repositório Docker - Debian/Ubuntu
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [arch={{ apt_architecture.stdout }}
+          signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/{{ 'ubuntu' if ansible_facts['distribution'] == 'Ubuntu' else 'debian' }}
+          {{ ansible_facts['distribution_release'] }} stable
+        filename: docker
+        state: present
+      when: ansible_facts['os_family'] == "Debian"
+
+    - name: Instalar Docker - RedHat
       ansible.builtin.dnf:
         name:
           - docker-ce
-          - git
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
         state: present
+      when: ansible_facts['os_family'] == "RedHat"
+
+    - name: Instalar Docker - Debian
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+      when: ansible_facts['os_family'] == "Debian"
 
     - name: Garantir que o Docker esteja iniciado
       ansible.builtin.systemd:
@@ -31,6 +125,16 @@
     - name: Exibir versão do Docker
       ansible.builtin.debug:
         var: docker_version.stdout
+
+    - name: Verificar versão do Docker Compose
+      ansible.builtin.command:
+        cmd: docker compose version
+      register: docker_compose_version
+      changed_when: false
+
+    - name: Exibir versão do Docker Compose
+      ansible.builtin.debug:
+        var: docker_compose_version.stdout
 
     - name: Clonar projeto Korp
       ansible.builtin.git:
