@@ -27,31 +27,31 @@ O projeto foi desenvolvido com foco em práticas de DevOps, automação, contain
                          │   Projeto Korp  │
                          └────────┬────────┘
                                   │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-                    │ /metrics                  │ HTTP
-                    ▼                           │
-             ┌───────────────┐                  │
-             │   Prometheus  │                  │
-             │     :9090     │                  │
-             └───────┬───────┘                  │
-                     │                          │
-                     │ métricas                 │
-                     ▼                          │
-             ┌───────────────┐                  │
-             │    Grafana    │                  │
-             │     :3000     │                  │
-             └───────────────┘                  │
+                     ┌────────────┴────────────┐
+                     │                         │
+                     │ /metrics                │ HTTP
+                     ▼                         │
+              ┌───────────────┐                 │
+              │   Prometheus  │                 │
+              │     :9090     │                 │
+              └───────┬───────┘                 │
+                      │                         │
+                      │ métricas                │
+                      ▼                         │
+              ┌───────────────┐                 │
+              │    Grafana    │                 │
+              │     :3000     │                 │
+              └───────────────┘                 │
 
-             ┌─────────────────┐
-             │     Ansible     │
-             │  Provisioning   │
-             └────────┬────────┘
-                      │
-                      ▼
-             ┌─────────────────┐
-             │ Docker Compose  │
-             └─────────────────┘
+              ┌─────────────────┐
+              │     Ansible     │
+              │  Provisioning   │
+              └────────┬────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │ Docker Compose  │
+              └─────────────────┘
 ```
 
 Todos os containers utilizam a rede Docker `korp-network`.
@@ -137,6 +137,36 @@ Exemplo:
 }
 ```
 
+O campo `horario` contém o horário atual em **UTC**, utilizando o formato **RFC 3339**, baseado no padrão ISO 8601.
+
+A estrutura do horário pode ser interpretada da seguinte forma:
+
+```text
+2026-08-11T14:45:33Z
+│         │        │
+│         │        └── Z = UTC
+│         └─────────── Hora, minuto e segundo
+└──────────────────── Data
+```
+
+O `T` separa a data do horário.
+
+Por exemplo:
+
+```text
+2026-08-11T14:45:33Z
+```
+
+representa:
+
+```text
+11/08/2026 14:45:33 UTC
+```
+
+A aplicação utiliza UTC para evitar ambiguidades relacionadas ao fuso horário do servidor.
+
+O horário é gerado dinamicamente a cada requisição.
+
 ### `/health`
 
 Endpoint utilizado para verificar a saúde da aplicação.
@@ -193,6 +223,8 @@ Labels:
 method
 path
 ```
+
+> A métrica de duração é exposta pela aplicação para instrumentação, porém o dashboard do Grafana utiliza apenas as métricas de volume de requisições e disponibilidade, conforme o escopo do projeto.
 
 ---
 
@@ -307,6 +339,19 @@ As métricas são disponibilizadas através do endpoint:
 /metrics
 ```
 
+A disponibilidade do serviço é obtida através da métrica:
+
+```promql
+up{job="http-server-projeto-korp"}
+```
+
+O valor da métrica representa o estado do serviço:
+
+```text
+1 → disponível
+0 → indisponível
+```
+
 ---
 
 ## Grafana
@@ -325,11 +370,40 @@ O dashboard também é provisionado automaticamente através de:
 grafana/provisioning/dashboards/dashboard.yml
 ```
 
-O dashboard do Projeto Korp apresenta:
+O dashboard do Projeto Korp apresenta as duas métricas principais do projeto:
 
-- Total de requisições HTTP
-- Taxa de requisições HTTP
-- Disponibilidade da aplicação
+- **Volume de requisições HTTP**
+- **Disponibilidade da aplicação**
+
+### Volume de requisições
+
+O volume é apresentado através da métrica:
+
+```promql
+sum(http_requests_total)
+```
+
+O painel apresenta o volume total de requisições HTTP processadas pela aplicação.
+
+### Disponibilidade
+
+A disponibilidade utiliza:
+
+```promql
+up{job="http-server-projeto-korp"}
+```
+
+O dashboard apresenta o estado atual do serviço:
+
+```text
+1 → Disponível
+0 → Indisponível
+```
+
+O painel exibe:
+
+- **Disponível** quando o serviço está operacional
+- **Indisponível** quando o Prometheus não consegue coletar as métricas do serviço
 
 O acesso anônimo está habilitado com permissão de visualização (`Viewer`).
 
@@ -340,7 +414,7 @@ O acesso anônimo está habilitado com permissão de visualização (`Viewer`).
 Clone o projeto:
 
 ```bash
-git clone git@github.com:danipeixoto87/projeto_korp.git
+git clone https://github.com/danipeixoto87/projeto_korp.git
 cd projeto_korp
 ```
 
@@ -384,12 +458,15 @@ ansible-playbook -i ansible/inventory.ini ansible/playbook.yml
 O playbook realiza as seguintes etapas:
 
 1. Instala Docker e Git.
-2. Garante que o Docker esteja iniciado.
-3. Verifica a versão do Docker.
-4. Clona ou atualiza o projeto.
-5. Cria a rede Docker `korp-network`.
-6. Executa o Docker Compose.
-7. Valida o endpoint `/projeto-korp`.
+2. Configura o repositório necessário para instalação do Docker conforme a distribuição Linux.
+3. Garante que o Docker esteja iniciado.
+4. Verifica a versão do Docker.
+5. Verifica a versão do Docker Compose.
+6. Clona ou atualiza o projeto.
+7. Cria a rede Docker `korp-network`.
+8. Executa o Docker Compose.
+9. Valida o endpoint `/projeto-korp`.
+10. Exibe a resposta da aplicação no console.
 
 ---
 
@@ -501,6 +578,32 @@ docker compose ps
 ```
 
 A aplicação Go e o Prometheus devem apresentar estado `healthy`.
+
+### Teste de disponibilidade
+
+A disponibilidade pode ser testada parando temporariamente a aplicação:
+
+```bash
+docker stop http-server-projeto-korp
+```
+
+Após o próximo ciclo de coleta do Prometheus, o dashboard deverá apresentar:
+
+```text
+Indisponível
+```
+
+Para restaurar o serviço:
+
+```bash
+docker start http-server-projeto-korp
+```
+
+Após o Prometheus detectar novamente o serviço, o dashboard deverá apresentar:
+
+```text
+Disponível
+```
 
 ---
 
