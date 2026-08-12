@@ -31,17 +31,17 @@ O projeto foi desenvolvido com foco em práticas de DevOps, automação, contain
                      │                         │
                      │ /metrics                │ HTTP
                      ▼                         │
-              ┌───────────────┐                 │
-              │   Prometheus  │                 │
-              │     :9090     │                 │
-              └───────┬───────┘                 │
-                      │                         │
-                      │ métricas                │
-                      ▼                         │
-              ┌───────────────┐                 │
-              │    Grafana    │                 │
-              │     :3000     │                 │
-              └───────────────┘                 │
+              ┌───────────────┐                │
+              │   Prometheus  │                │
+              │     :9090     │                │
+              └───────┬───────┘                │
+                      │                        │
+                      │ métricas               │
+                      ▼                        │
+              ┌───────────────┐                │
+              │    Grafana    │                │
+              │     :3000     │                │
+              └───────────────┘                │
 
               ┌─────────────────┐
               │     Ansible     │
