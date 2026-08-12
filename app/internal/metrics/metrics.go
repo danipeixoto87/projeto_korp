@@ -10,15 +10,6 @@ var RequestsTotal = prometheus.NewCounterVec(
 	[]string{"method", "path", "status"},
 )
 
-var RequestDuration = prometheus.NewHistogramVec(
-	prometheus.HistogramOpts{
-		Name: "http_request_duration_seconds",
-		Help: "HTTP request duration in seconds.",
-	},
-	[]string{"method", "path"},
-)
-
 func Register() {
 	prometheus.MustRegister(RequestsTotal)
-	prometheus.MustRegister(RequestDuration)
-}
+	}

@@ -27,31 +27,31 @@ O projeto foi desenvolvido com foco em práticas de DevOps, automação, contain
                          │   Projeto Korp  │
                          └────────┬────────┘
                                   │
-                     ┌────────────┴────────────┐
-                     │                         │
-                     │ /metrics                │ HTTP
-                     ▼                         │
-              ┌───────────────┐                │
-              │   Prometheus  │                │
-              │     :9090     │                │
-              └───────┬───────┘                │
-                      │                        │
-                      │ métricas               │
-                      ▼                        │
-              ┌───────────────┐                │
-              │    Grafana    │                │
-              │     :3000     │                │
-              └───────────────┘                │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+                    │ /metrics                  │ HTTP
+                    ▼                           │
+             ┌───────────────┐                  │
+             │   Prometheus  │                  │
+             │     :9090     │                  │
+             └───────┬───────┘                  │
+                     │                          │
+                     │ métricas                 │
+                     ▼                          │
+             ┌───────────────┐                  │
+             │    Grafana    │                  │
+             │     :3000     │                  │
+             └───────────────┘                  │
 
-              ┌─────────────────┐
-              │     Ansible     │
-              │  Provisioning   │
-              └────────┬────────┘
-                       │
-                       ▼
-              ┌─────────────────┐
-              │ Docker Compose  │
-              └─────────────────┘
+             ┌─────────────────┐
+             │     Ansible     │
+             │  Provisioning   │
+             └────────┬────────┘
+                      │
+                      ▼
+             ┌─────────────────┐
+             │ Docker Compose  │
+             └─────────────────┘
 ```
 
 Todos os containers utilizam a rede Docker `korp-network`.
@@ -189,11 +189,11 @@ Endpoint utilizado pelo Prometheus para coletar as métricas da aplicação.
 
 A aplicação utiliza a biblioteca Prometheus para instrumentação.
 
-São disponibilizadas as seguintes métricas principais.
+O projeto utiliza as seguintes métricas:
 
 ### `http_requests_total`
 
-Contador do total de requisições HTTP.
+Contador do total de requisições HTTP processadas pela aplicação.
 
 Labels:
 
@@ -213,18 +213,22 @@ http_requests_total{
 }
 ```
 
-### `http_request_duration_seconds`
+Essa métrica é incrementada pelo middleware a cada requisição processada.
 
-Histograma utilizado para medir a duração das requisições HTTP.
+### Disponibilidade
 
-Labels:
+A disponibilidade da aplicação é monitorada pelo Prometheus através da métrica:
 
-```text
-method
-path
+```promql
+up{job="http-server-projeto-korp"}
 ```
 
-> A métrica de duração é exposta pela aplicação para instrumentação, porém o dashboard do Grafana utiliza apenas as métricas de volume de requisições e disponibilidade, conforme o escopo do projeto.
+O valor representa o estado da coleta do serviço:
+
+```text
+1 → disponível
+0 → indisponível
+```
 
 ---
 
@@ -370,7 +374,7 @@ O dashboard também é provisionado automaticamente através de:
 grafana/provisioning/dashboards/dashboard.yml
 ```
 
-O dashboard do Projeto Korp apresenta as duas métricas principais do projeto:
+O dashboard do Projeto Korp apresenta somente as duas métricas definidas no escopo do projeto:
 
 - **Volume de requisições HTTP**
 - **Disponibilidade da aplicação**
